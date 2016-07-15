@@ -1,0 +1,520 @@
+// going to reformat this to use 2 space expanded tabs
+
+//Object containing all board Pieces and organizing them by y value
+
+/**
+* handles method calls with the Audio Element's interface 
+* @constructor
+*/
+
+
+var audioHandler = new (function() {
+  audio = document.getElementsByTagName('audio')[0];
+
+  /**
+   * @function
+   * Restarts music and starts playing music.
+   */
+  this.play = function() {
+    audio.currentTime = 0;
+    audio.play();
+  };
+
+  /**
+   * @function
+   * Calls audio element interface's play method.
+   */
+  this.pause = function() {
+    audio.pause();
+  }
+  /**
+   * @function
+   * @returns {boolean}
+   * returns the state of the Audio Element Interfaces paused field.
+   */
+  this.isPaused = function() {
+    return audio.paused;
+  };
+})();
+
+/**
+ * Object that handles non-entity game data.
+ */
+var gameStatus = new (function() {
+  this.score = 0;
+  this.lives = 3;
+  this.mode = "setup";
+  this.levelComplete = function() {
+    this.score+=100;
+    if (this.score > 200){
+      this.mode = 'victory';
+    }
+    allEnemies.forEach(
+      function(enemy){
+        enemy.reInit();
+      }
+    );
+    player.reInit();
+    this.celebration.party();
+
+  };
+
+  /**
+   * draws a celebration message on the canvas.
+   * @constructor
+   */
+  this.celebration = new (function(){
+    var exclamations = ['WOW', 'TUBULAR!','WHOA... DUDE!', 'EXCELLENT', 'OOOOHHHHHHH!'],
+        i = -1;//not good to leave a variable with a generic name like this
+
+    this.message;
+    this.celebrate = false;
+    this.party =  function() {
+      //counter of the times this function will be invoked
+      if (i < 0){
+        i = 100;
+        //sets flag which the Engines render function reads to display the player celebration
+        this.celebrate = true;
+      }
+      //sets up style rules for text
+      ctx.fillStyle = 'red';
+      ctx.font = '24px Helvetica';
+      ctx.textAlign = 'left';
+      //sets up text to be displayed
+      if (!this.message){
+        this.message = exclamations[Math.floor(Math.random()*5)]; 
+      }
+      //displays text
+      ctx.fillText(this.message,30, 498);
+      i--;
+      if(i == 0) {
+        this.celebrate = false;
+        this.message = null;
+     }
+    };
+  })();
+
+  /** 
+   * @function
+   * Handles the non-board non-entity game data which is effected by a player-enemy conflect.
+   */
+  this.conflict = function() {
+    this.lives--;
+    if (this.lives < 1){
+      this.dataReinit('defeat');
+    }
+  };
+
+  /**
+   * @function
+   * @param {string} string representing what mode the game is in based on number of lives, player input, and score
+   * Sets gameStatus which needs to be set back at the beginning of each game back to where to its initial value.
+   */
+  this.dataReinit = function(mode) {
+    this.score = 0;
+    this.lives = 3;
+    this.mode = mode;
+  };
+  
+  /**
+   * @function
+   * Displays player's current score.
+   */
+  this.displayScore = function() {
+    ctx.font = "24px Helvetica";
+    ctx.textAlign = "right";
+    ctx.fillStyle = "white";
+    ctx.strokeStyle = "black";
+    ctx.fillText(this.score, 505, 100);
+    ctx.strokeText(this.score, 505, 100);
+  };
+
+  /**
+   * Gathers resources needed for the start screen, draws the start screen on the canvas and handles user interaction.
+   */
+  this.setupHandler = new (function() {
+    this.characters = [];
+    this.selected = -1;
+    this.init = function() {
+      [
+        Resources.get('images/char-boy.png'),
+        Resources.get('images/char-cat-girl.png'),
+        Resources.get('images/char-horn-girl.png'),
+        Resources.get('images/char-pink-girl.png'),
+        Resources.get('images/char-princess-girl.png'),
+      ].forEach(
+          function(char, index) {
+            this.characters.push({
+              sprite: char,
+              x: index*101
+            });
+          },
+          this
+          );
+      ctx.font = '36px Helvetica';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'top';
+      ctx.fillStyle = 'white';
+      ctx.strikeStyle = 'black';
+      ctx.fillText("CHARACTER SELECTION", 253, 83);
+      ctx.strokeText("CHARACTER SELECTION", 253, 83);
+      };
+
+      /**
+       * @function
+       * Draws each image character sprite on the canvas.
+       */
+      this.draw =  function() {
+        Degas.grayScaleCanvas(0,0,505,606);
+        this.characters.forEach(
+          function(char) {
+            ctx.drawImage(char.sprite, char.x, 166);
+          }
+        );
+        this.handleInput('right');
+      };
+
+      /**
+       * @function
+       * @param {string} string representing what key user pressed
+       * handles input, character selection and starting the game
+       */
+      this.handleInput = function(key) {
+        switch (key){
+          case 'left':
+            this.selected = this.selected - 1 < 0 ? 4 : this.selected - 1;
+            break;
+          case 'right':
+            this.selected = this.selected + 1 > 4 ? 0 : this.selected + 1;
+            break;
+          case 'enter':
+            player.sprite = this.characters[this.selected].sprite;
+            gameStatus.mode = 'play';
+            break;
+        }
+        char = this.characters[this.selected];
+        Degas.grayScaleCanvas(0,0,505,606);
+        ctx.drawImage(char.sprite, char.x, 166);
+      };
+  })();
+
+  /**
+   * handles game state, user interaction and canvas drawing for when a player has been defeated
+   * @param {string} flag value is either 'init' indicating that the defeat sequence should be initialized or a key code used for user interaction.
+   */
+  this.defeatHandler = function(flag) {
+    var that = this;
+
+    /**
+     * handles the canvas drawing performed after the player is defeated
+     */
+    function initDefeat() {
+      Degas.grayScaleCanvas(0,0,505,606);
+      //set font rules for score
+      ctx.font = '36px Helvetica';
+      ctx.fillStyle = 'white';
+      ctx.strikeStyle = 'black';
+      ctx.textAlign = 'center';
+      ctx.fillText(that.score,253, 166);
+      ctx.strokeText(that.score,253, 166);
+      //change what I have to for displaying Banner
+      ctx.font = '24px Helvetica';
+      ctx.fillText('DEFEATED',253, 249);
+      ctx.strokeText('DEFEATED',253, 249);
+      //change what I have to again for displaying press enter to play again
+      ctx.font = '18px Helvetica';
+      ctx.fillText('PRESS ENTER TO CONTINUE',253, 332);
+      ctx.strokeText('PRESS ENTER TO CONTINUE',253, 332);
+    }
+    if (flag == 'init') {
+      initDefeat();
+    }
+    else{
+      if (flag == 'enter'){
+        this.mode = 'play';
+      }
+    }
+  };
+
+  this.triumphHandler = (function() {
+    var mode = this.mode;
+
+    /**
+    * handles game state, user interaction and canvas drawing for when a player has won the game
+    */   
+    return function(flag) {
+      if (flag == 'init' && mode != this.mode){
+        mode = this.mode;
+        Degas.invertColorsCanvas(0,0,505,606);
+        //banner text
+        ctx.font = '36px Helvetica';
+        ctx.fillStyle = 'white';
+        ctx.strikeStyle = 'black';
+        ctx.textAlign = 'center';
+        ctx.fillText('YOU WIN!',253, 166);
+        ctx.strokeText('YOU WIN!',253, 166);
+        //information display
+        ctx.font = '18px Helvetica';
+        ctx.fillText('PRESS ENTER TO CONTINUE',253, 332);
+        ctx.strokeText('PRESS ENTER TO CONTINUE',253, 332);
+        //nonsense
+        ctx.fillStyle = 'red';
+        ctx.textAlign = 'right';
+        ctx.fillText('WOW',100, 100);
+        ctx.fillText('You Rule!', 300, 100);
+        ctx.fillText('Can I have your autograph?', 400, 230);
+        ctx.fillText('Memento Mori', 200, 400);
+      }
+      else{
+        if (flag == 'enter'){
+          this.mode = 'setup';
+          mode = this.mode;
+          this.reinit();
+          this.dataReinit('setup');
+        }
+      }
+    };
+  })();
+
+  /**
+   * hands control to different functions depending on the game mode
+   */
+  this.modeSwap = (function() {
+    var lastMode = this.mode;
+    return function() {
+      if (this.mode != lastMode){
+        switch (this.mode) {
+          case 'defeat':
+            this.defeatHandler('init');
+            break;
+          case 'victory':
+            this.triumphHandler('init');
+            break;
+        }
+      }
+    };
+  })();
+
+})();
+
+/**
+ * Handles position data for the player and entities
+ */
+var boardPieces = new (function () {
+  var rows = [],
+      pieces = {};
+  for (var i=0;i<6;i++){
+    rows.push([]);
+  }
+ 
+  /** 
+   * @param {array} point accepts value of the form [x,y] where x is a point on the x axis and y on the y axis
+   * @returns boolean
+   */
+  this.onBoard = function(point) {
+    if (!this.canvas) {
+      this.canvas = document.getElementsByTagName('canvas')[0];
+    }
+    if ((point[0] < this.canvas.width && point[1] < 498) && (point[0] >= 0 && point[1] >= 0)){
+      return true;
+    }
+    return false;
+  }
+})();
+
+// Enemies our player must avoid
+var Enemy = function() {
+    // Variables applied to each of our instances go here,
+    // we've provided one for you to get started
+
+    // The image/sprite for our enemies, this uses
+    // a helper we've provided to easily load images
+    this.endOfBoard = 606;
+    this.sprite = 'images/enemy-bug.png';
+    this.x = -202;
+    //randomizes starting row position
+    this.y = (Math.ceil(Math.random()*3)) * 83;//ntlu check that produces the correct behavior
+    //creates bugs of different levels of speed while allowing
+    //this.dydt is the rate of change
+    this.dydt = [300,500,800][Math.floor(Math.random() * 3)];
+    this.id = this.genId();
+};
+
+// Update the enemy's position, required method for game
+// Parameter: dt, a time delta between ticks
+Enemy.prototype.update = function(dt) {
+    // You should multiply any movement by the dt parameter
+    // which will ensure the game runs at the same speed for
+    // all computers.
+    if (this.x >= this.endOfBoard){
+      this.reInit();
+    }
+    this.x = Math.ceil(this.x + this.dydt*dt);
+};
+
+// Draw the enemy on the screen, required method for game
+Enemy.prototype.render = function() {
+    ctx.drawImage(Resources.get(this.sprite), this.x, this.y);
+};
+Enemy.prototype.reInit = function(){
+  //can I just run this at Instantiation time and get rid of the variable definition in the object literal... DRY
+  this.x = -202;
+  this.y = (Math.ceil(Math.random()*3)) * 83;//ntlu check this
+  this.dydt = [300,500,800][Math.floor(Math.random() * 3)];
+};
+
+/**
+ * @function
+ * @returns {string} return value is a unique string
+ */
+Enemy.prototype.genId = (function() {
+  //generates a unique id for each enemy object
+  var i = 0;
+  return function() {
+    return "Enemy" + i++;
+  };
+})();
+
+/**
+ * resets game entities to their original positions
+ * @function
+ */
+Enemy.prototype.conflict = function() {
+  gameStatus.conflict();//need to write gameStatus Object
+  allEnemies.forEach(function(enemy) {
+    enemy.reInit();
+    });
+    player.reInit();
+    gameStatus.mode = 'play';
+};
+
+// Now write your own player class
+// This class requires an update(), render() and
+// a handleInput() method.
+var Player = function() {
+  /** Creates a new Player
+   * @class
+   */
+  this.sprite;
+  this.x = 202;
+  this.y = 415;
+}
+
+/**
+ * @function
+ * @param {number} dt the delta time since the last loop of the game engine
+ * initiates actions required based on state relative to an instance of a player object
+ */
+Player.prototype.update = function(dt) {
+    if (this.y < 83){
+      gameStatus.levelComplete();
+    }
+    if (this.input){
+      this.move();
+      this.input = null;
+    }
+    allEnemies.forEach(function(piece) {
+      if (((this.x < piece.x + 85) === !(this.x + 85 < piece.x)) && this.y == piece.y){
+        gameStatus.mode = 'pause';
+        console.log('pause')
+        piece.conflict();
+        point = null;
+      }
+    },this);
+};
+
+/**
+ * @function
+ * @param {string} Key string representing user key press.
+ * passes some vector based on which key the user pressed to the Player.input data member
+ */
+Player.prototype.handleInput = function(key) {
+  switch (key){
+    case 'up':
+      this.input = {direction: 'y', magnitude: -83};
+      break;
+    case 'down':
+      this.input = {direction: 'y', magnitude: 83};
+      break;
+    case 'left':
+      this.input = {direction: 'x', magnitude: -101};
+      break;
+    case 'right':
+      this.input = {direction: 'x', magnitude: 101};
+      break;
+  }
+};
+
+/**
+ * @function
+ * checks to see if the adding the moment vector found in this.input would produce a legal move and then moves the player instance
+ */
+Player.prototype.move = function() {
+  var point = [this.x, this.y];
+  var nPoint = point.slice(0);
+  nPoint[this.input.direction === 'x' ? 0 : 1]+=this.input.magnitude;
+  if (boardPieces.onBoard(nPoint)){
+    point = nPoint;
+  }
+  //move
+  this.x = point[0];
+  this.y = point[1];
+};
+
+/**
+ * @function
+ * reverts player positional data back to its initial value
+ */
+Player.prototype.reInit = function() {
+  this.x = 202;
+  this.y = 415;
+}; 
+
+/**
+ * @function
+ * draws the player instances sprite value at the position indicated by its x and y values, displays the player's score and writes a celebratory message if the gameStatus object says that the player should.
+ */
+Player.prototype.render = function() {
+  ctx.drawImage(this.sprite, this.x, this.y);
+  gameStatus.displayScore();
+  if (gameStatus.celebration.celebrate){
+    gameStatus.celebration.party();
+  }
+}
+
+// Now instantiate your objects.
+// Place all enemy objects in an array called allEnemies
+// Place the player object in a variable called player
+
+var allEnemies = [ 
+      new Enemy(),
+      new Enemy(),
+      new Enemy()
+    ],
+    player = new Player();
+
+
+// Player.handleInput() method. You don't need to modify this.
+document.addEventListener('keyup', function(e) {
+    var allowedKeys = {
+        13: 'enter',
+        37: 'left',
+        38: 'up',
+        39: 'right',
+        40: 'down'
+    };
+    switch (gameStatus.mode){
+      case 'play':
+        player.handleInput(allowedKeys[e.keyCode]);
+        break;
+      case 'setup':
+        gameStatus.setupHandler.handleInput(allowedKeys[e.keyCode]);
+        break;
+      case 'defeat':
+        gameStatus.defeatHandler(allowedKeys[e.keyCode]);
+        break;
+      case 'victory':
+        gameStatus.triumphHandler(allowedKeys[e.keyCode]);
+        break;
+    }
+});

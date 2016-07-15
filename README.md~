@@ -1,0 +1,24 @@
+
+# Techentin Arcade Clone
+
+## Description
+
+Techentin Arcade Clone is a frogger clone with a built with a little flair. The clone is built with web technologies and makes use of the HTML5 canvas element.
+
+## Installation
+
+Get the files for Techentin Arcade clone by either downloading the zip file from github or using the following command in ones terminal.
+
+`git clone https://github.Jtechent/frontend-Arcade-game`
+
+## Use instructions
+
+Techentin Arcade Clone is designed to be run in a modern web browser. In order to play the game one must serve the files from a web server. Simple webservers like _Python_'s built-in `SimpleHTTPServer` module will suffice. 
+
+To use the serve the game using _Python_ open a terminal and navigate to the Techentin Arcade Clone's directory and type the following.
+
+`python --m SimpleHTTPServer`
+
+Python will return a response in your terminal indicating the port number the server is operating on. In the browser navigate to http://_thePortNumber_/index.html
+
+
